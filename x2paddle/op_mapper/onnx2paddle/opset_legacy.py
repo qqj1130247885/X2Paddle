@@ -357,7 +357,6 @@ class OpSet():
                 if len(val_x_shape) == 3:
                     val_scales = self.graph.get_input_node(
                         node, idx=2, copy=True)
-                    val_scales_values = _const_weight_or_none(val_scales)
 
                     attrs = {
                         "align_corners": False,
@@ -1682,17 +1681,14 @@ class OpSet():
             inputs=matmul_inputs,
             outputs=[val_mm],
             **attr_matmul)
-        if beta != 0:
-            self.paddle_graph.add_layer(
-                "paddle.scale",
-                inputs={"x": val_mm},
-                outputs=[val_mm],
-                scale=alpha)
-        else:
-            self.paddle_graph.add_layer(
-                "paddle.scale", inputs={"x": val_mm}, outputs=[node.name])
 
         if beta != 0:
+            if alpha != 1:
+                self.paddle_graph.add_layer(
+                    "paddle.scale",
+                    inputs={"x": val_mm},
+                    outputs=[val_mm],
+                    scale=alpha)
             # when beta is equal to 0, there is no val_c
             val_c = self.graph.get_input_node(node, idx=2, copy=True)
             if beta == 1.:
@@ -1709,6 +1705,9 @@ class OpSet():
                 add_inputs = {"x": val_mm, "y": var_beta}
                 self.paddle_graph.add_layer(
                     "paddle.add", inputs=add_inputs, outputs=[node.name])
+        else:
+            self.paddle_graph.add_layer(
+                "paddle.scale", inputs={"x": val_mm}, outputs=[node.name])
 
     @print_mapping_info
     def Sum(self, node):
